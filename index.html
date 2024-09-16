@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mental Health Quiz</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            width: 600px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        .quiz-container, .result, .leaderboard {
+            display: none;
+        }
+        .quiz-answer {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .quiz-answer:hover {
+            background-color: #ddd;
+        }
+        .result {
+            text-align: center;
+        }
+        #leaderboardContainer {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Mental Health Awareness Quiz</h1>
+
+        <div id="intro">
+            <p>Test your knowledge on mental health by taking this quiz! Complete it as quickly as possible and see how you rank on the leaderboard.</p>
+            <button id="startQuizBtn">Start Quiz</button>
+        </div>
+
+        <div id="quizContainer" class="quiz-container">
+            <div id="questionContainer"></div>
+            <div id="answersContainer"></div>
+            <p>Time left: <span id="timer">60</span> seconds</p>
+        </div>
+
+        <div id="resultContainer" class="result">
+            <h3>Your Score: <span id="score"></span></h3>
+            <form id="leaderboardForm">
+                <label for="name">Name: </label><br>
+                <input type="text" id="name" required><br>
+                <label for="yearGroup">Year Group: </label><br>
+                <input type="text" id="yearGroup" required><br>
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+
+        <div id="leaderboardContainer" class="leaderboard">
+            <h3>Leaderboard</h3>
+            <div id="topPodium"></div>
+            <div id="topUserInfo"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCW8I1Cr-4WGfbqaBWtz5A3ajAOZUqjJTc",
+            authDomain: "health-expo-quiz-test.firebaseapp.com",
+            projectId: "health-expo-quiz-test",
+            storageBucket: "health-expo-quiz-test.appspot.com",
+            messagingSenderId: "992897944471",
+            appId: "1:992897944471:web:ef0bc55963d3c10f1ad2d2",
+            measurementId: "G-DSR6BVM3V2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 10 Questions
+        const questions = [
+            { question: "What is an effective coping strategy for stress?", answers: ["Deep breathing", "Ignoring stress", "Overworking", "Disregarding feelings"], correct: 0 },
+            { question: "Which professional can help with mental health?", answers: ["Therapist", "Mechanic", "Chef", "Engineer"], correct: 0 },
+            { question: "What is a common symptom of anxiety?", answers: ["Sweating", "Hunger", "Calmness", "Drowsiness"], correct: 0 },
+            { question: "What can improve mental well-being?", answers: ["Exercise", "Isolation", "Overeating", "Overworking"], correct: 0 },
+            { question: "What is mindfulness?", answers: ["Present-focused awareness", "Daydreaming", "Constant worrying", "Overthinking"], correct: 0 },
+            { question: "Which one is a common sign of depression?", answers: ["Loss of interest", "Extreme happiness", "Increased energy", "None of these"], correct: 0 },
+            { question: "What is a mental health disorder?", answers: ["Schizophrenia", "Broken leg", "Headache", "None"], correct: 0 },
+            { question: "Who should you talk to if you're feeling overwhelmed?", answers: ["Counselor", "Stranger", "Nobody", "None"], correct: 0 },
+            { question: "What is a common treatment for depression?", answers: ["Therapy", "Avoiding friends", "Ignoring symptoms", "None"], correct: 0 },
+            { question: "What can help relieve anxiety?", answers: ["Relaxation exercises", "Panicking", "Overeating", "Disregarding issues"], correct: 0 }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timer;
+        let timeLeft = 60; // 60 seconds
+
+        const startQuiz = () => {
+            document.getElementById('intro').style.display = 'none';
+            document.getElementById('quizContainer').style.display = 'block';
+            showQuestion();
+            startTimer();
+        };
+
+        const showQuestion = () => {
+            const question = questions[currentQuestionIndex];
+            document.getElementById('questionContainer').innerText = question.question;
+            const answersContainer = document.getElementById('answersContainer');
+            answersContainer.innerHTML = '';
+            question.answers.forEach((answer, index) => {
+                const button = document.createElement('button');
+                button.classList.add('quiz-answer');
+                button.innerText = answer;
+                button.onclick = () => checkAnswer(index);
+                answersContainer.appendChild(button);
+            });
+        };
+
+        const checkAnswer = (index) => {
+            if (index === questions[currentQuestionIndex].correct) {
+                score++;
+            }
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                showQuestion();
+            } else {
+                endQuiz();
+            }
+        };
+
+        const startTimer = () => {
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    endQuiz();
+                }
+            }, 1000);
+        };
+
+        const endQuiz = async () => {
+            clearInterval(timer);
+            document.getElementById('quizContainer').style.display = 'none';
+            document.getElementById('resultContainer').style.display = 'block';
+            document.getElementById('score').innerText = score;
+
+            try {
+                await saveScore(); // Save the score
+                showLeaderboard(); // Show leaderboard only after score is saved
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
+        };
+
+        // Save the score to Firebase
+        const saveScore = async () => {
+            const name = document.getElementById('name').value;
+            const yearGroup = document.getElementById('yearGroup').value;
+
+            try {
+                await addDoc(collection(db, 'leaderboard'), {
+                    name,
+                    yearGroup,
+                    score,
+                    time: new Date().toISOString()
+                });
+            } catch (error) {
+                throw new Error("Failed to save score");
+            }
+        };
+
+        // Show leaderboard
+        const showLeaderboard = async () => {
+            document.getElementById('resultContainer').style.display = 'none';
+            document.getElementById('leaderboardContainer').style.display = 'block';
+
+            const q = query(collection(db, 'leaderboard'), orderBy('score', 'desc'));
+            const querySnapshot = await getDocs(q);
+
+            const topUsers = [];
+            querySnapshot.forEach(doc => {
+                topUsers.push(doc.data());
+            });
+
+            const topUser = topUsers[0];
+            document.getElementById('topPodium').innerText = `Top Scorer: ${topUser.name}`;
+            document.getElementById('topUserInfo').innerHTML = `<h3>Year Group: ${topUser.yearGroup}</h3><p>Score: ${topUser.score}</p>`;
+        };
+
+        document.getElementById('startQuizBtn').addEventListener('click', startQuiz);
+
+        document.getElementById('leaderboardForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await saveScore();
+            showLeaderboard();
+        });
+    </script>
+
+</body>
+</html>
